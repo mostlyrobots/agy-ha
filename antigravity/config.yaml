@@ -1,7 +1,7 @@
 name: "Google Antigravity CLI"
 slug: "antigravity"
 description: "Google Antigravity AI coding assistant and remote-control daemon with web terminal Ingress"
-version: "1.0.0"
+version: "1.0.1"
 image: "ghcr.io/mostlyrobots/{arch}-addon-antigravity"
 url: "https://github.com/mostlyrobots/agy-ha"
 arch:
@@ -9,6 +9,7 @@ arch:
   - amd64
 startup: application
 boot: auto
+init: false
 ingress: true
 ingress_port: 8099
 panel_icon: "mdi:robot-excited-outline"

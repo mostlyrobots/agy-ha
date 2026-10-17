@@ -47,4 +47,4 @@ RUN chmod +x /run.sh /ui.sh /fetch-agy.sh
 
 WORKDIR /config
 
-CMD ["/run.sh"]
+ENTRYPOINT ["/run.sh"]
