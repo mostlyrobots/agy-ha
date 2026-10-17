@@ -28,16 +28,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nodejs \
     npm \
     docker.io \
-    ttyd \
     && rm -rf /var/lib/apt/lists/*
 
-# If ttyd wasn't installed or needs fallback, ensure it exists
-RUN which ttyd || ( \
-    ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then TTYD_ARCH="x86_64"; else TTYD_ARCH="aarch64"; fi && \
+# Install ttyd multi-arch release binary
+RUN ARCH=$(uname -m) && \
+    case "$ARCH" in \
+      x86_64|amd64) TTYD_ARCH="x86_64" ;; \
+      aarch64|arm64) TTYD_ARCH="aarch64" ;; \
+      *) echo "Unsupported arch: $ARCH" && exit 1 ;; \
+    esac && \
     curl -sSL "https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.${TTYD_ARCH}" -o /usr/local/bin/ttyd && \
-    chmod +x /usr/local/bin/ttyd \
-)
+    chmod +x /usr/local/bin/ttyd
 
 # Copy rootfs scripts
 COPY rootfs/ /
