@@ -71,12 +71,66 @@ if [ -n "${GIT_USER_EMAIL}" ]; then
   git config --global user.email "${GIT_USER_EMAIL}" || true
 fi
 
-# Persist remote-control instance name
-echo -n "${INSTANCE_NAME}" > /data/.gemini/antigravity-cli/remote-control-name
+# Normalize instance prefix (strip trailing hyphen if provided)
+INSTANCE_PREFIX="${INSTANCE_NAME%-}"
+[ -z "${INSTANCE_PREFIX}" ] && INSTANCE_PREFIX="homeassistant"
+
+ensure_remote_control_hostname() {
+  local CONFIG_JSON="/data/.gemini/config/config.json"
+  local CUR_CFG="{}"
+  if [ -s "${CONFIG_JSON}" ]; then
+    CUR_CFG="$(cat "${CONFIG_JSON}" 2>/dev/null || echo "{}")"
+  fi
+
+  local EXISTING_HOST
+  EXISTING_HOST="$(echo "${CUR_CFG}" | jq -r '.userSettings.cliRemoteControlHostname // empty' 2>/dev/null || true)"
+
+  local SUFFIX=""
+  if [[ "${EXISTING_HOST}" == *-antigravity-* ]]; then
+    SUFFIX="${EXISTING_HOST#*antigravity-}"
+  elif [[ "${EXISTING_HOST}" == "${INSTANCE_PREFIX}-"* ]]; then
+    SUFFIX="${EXISTING_HOST#${INSTANCE_PREFIX}-}"
+  elif [ -n "${EXISTING_HOST}" ]; then
+    SUFFIX="${EXISTING_HOST}"
+  fi
+
+  if [ -z "${SUFFIX}" ]; then
+    local ADJS=("glowing" "rising" "radiant" "stellar" "cosmic" "lunar" "solar" "quantum")
+    local NOUNS=("flare" "vector" "nebula" "horizon" "pulse" "orbit" "beacon" "vertex")
+    local W1="${ADJS[$((RANDOM % ${#ADJS[@]}))]}"
+    local W2="${NOUNS[$((RANDOM % ${#NOUNS[@]}))]}"
+    SUFFIX="${W1}-${W2}"
+  fi
+
+  FULL_INSTANCE_NAME="${INSTANCE_PREFIX}-${SUFFIX}"
+
+  local UPDATED_CFG
+  UPDATED_CFG="$(echo "${CUR_CFG}" | jq --arg host "${FULL_INSTANCE_NAME}" '
+    .userSettings = (.userSettings // {}) |
+    .userSettings.cliRemoteControlHostname = $host |
+    .userSettings.remoteControlHostname = $host |
+    .userSettings.globalPermissionGrants = {
+      allow: (
+        ((.userSettings.globalPermissionGrants.allow // []) + [
+          "command(*)",
+          "write_file(*)",
+          "read_file(*)",
+          "read_url(*)",
+          "mcp(*)"
+        ]) | unique
+      )
+    }
+  ' 2>/dev/null || echo "${CUR_CFG}")"
+
+  echo "${UPDATED_CFG}" > "${CONFIG_JSON}"
+  echo -n "${FULL_INSTANCE_NAME}" > /data/.gemini/antigravity-cli/remote-control-name
+}
+
+ensure_remote_control_hostname
 
 # 4. Enforce Always-Turbo Mode globally and per-workspace without clobbering user model choices
 SETTINGS_PATH="/data/.gemini/antigravity-cli/settings.json"
-echo "[Antigravity] Enforcing TURBO mode permissions (Instance: ${INSTANCE_NAME})..."
+echo "[Antigravity] Enforcing TURBO mode permissions (Instance: ${FULL_INSTANCE_NAME})..."
 
 CURRENT_SETTINGS="{}"
 if [ -s "${SETTINGS_PATH}" ]; then
@@ -189,7 +243,7 @@ stop_daemon() {
 }
 
 daemon_supervisor_loop() {
-  echo "[Antigravity] Remote-control supervisor started (auto_start=${AUTO_START_DAEMON}, instance=${INSTANCE_NAME})."
+  echo "[Antigravity] Remote-control supervisor started (auto_start=${AUTO_START_DAEMON}, instance=${FULL_INSTANCE_NAME})."
   local TOKEN_FILE="/data/.gemini/antigravity-cli/antigravity-oauth-token"
   local LAST_TOKEN_MTIME=""
 
@@ -197,8 +251,8 @@ daemon_supervisor_loop() {
     if [ "${AUTO_START_DAEMON}" = "true" ]; then
       if [ -s "${TOKEN_FILE}" ]; then
         rm -f /tmp/auth_notice_printed
-        echo -n "${INSTANCE_NAME}" > /data/.gemini/antigravity-cli/remote-control-name
-        echo "[Antigravity] Starting agy remote-control serve (Instance: ${INSTANCE_NAME})..."
+        ensure_remote_control_hostname
+        echo "[Antigravity] Starting agy remote-control serve (Instance: ${FULL_INSTANCE_NAME})..."
         cd /config
         set +e
         /usr/local/bin/agy --dangerously-skip-permissions remote-control serve >> /data/remote-control.log 2>&1 &

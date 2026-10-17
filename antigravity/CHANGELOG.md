@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- **Remote Control Instance Prefix (`homeassistant-`)**: Sets the container hostname to `homeassistant` and configures `userSettings.cliRemoteControlHostname` / `remoteControlHostname` in `/data/.gemini/config/config.json` so the instance registers as `homeassistant-<word1>-<word2>` (e.g., `homeassistant-glowing-flare`) instead of the internal Supervisor slug `c1c196f8-antigravity-...`.
+
 ## 1.1.0
 
 - **Persistent TUI via `tmux`**: Opening the Antigravity sidebar now attaches directly to a persistent `tmux` session running `agy` in `/config`, with a second `2:bash` window accessible via click or `Alt+2`.
