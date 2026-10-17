@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "antigravity/**"
+      - ".github/workflows/builder.yaml"
   workflow_dispatch:
 
 permissions:
@@ -14,14 +15,31 @@ permissions:
 
 jobs:
   build:
-    name: Build and Publish Add-on
-    runs-on: ubuntu-latest
+    name: Build ${{ matrix.arch }} Add-on
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+            build_from: ghcr.io/home-assistant/amd64-base-debian:bookworm
+          - arch: aarch64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            build_from: ghcr.io/home-assistant/aarch64-base-debian:bookworm
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Read version from config.yaml
+        id: meta
+        run: |
+          VERSION=$(grep -E '^version:' antigravity/config.yaml | head -n1 | sed -E 's/version:[[:space:]]*"?([^"]+)"?/\1/')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building version ${VERSION} for ${{ matrix.arch }}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -33,11 +51,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Publish
-        uses: home-assistant/builder@master
+      - name: Build and push ghcr.io/mostlyrobots/${{ matrix.arch }}-addon-antigravity
+        uses: docker/build-push-action@v6
         with:
-          args: |
-            --target antigravity \
-            --image "mostlyrobots/{arch}-addon-antigravity" \
-            --docker-hub "ghcr.io" \
-            --all
+          context: ./antigravity
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_FROM=${{ matrix.build_from }}
+          tags: |
+            ghcr.io/mostlyrobots/${{ matrix.arch }}-addon-antigravity:${{ steps.meta.outputs.version }}
+            ghcr.io/mostlyrobots/${{ matrix.arch }}-addon-antigravity:latest
+          labels: |
+            io.hass.name=Google Antigravity CLI
+            io.hass.description=Google Antigravity AI coding assistant and remote-control daemon with persistent Ingress TUI
+            io.hass.version=${{ steps.meta.outputs.version }}
+            io.hass.type=addon
+            io.hass.arch=${{ matrix.arch }}
+            org.opencontainers.image.source=https://github.com/mostlyrobots/agy-ha
+            org.opencontainers.image.licenses=MIT

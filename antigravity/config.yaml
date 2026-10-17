@@ -1,8 +1,9 @@
 name: "Google Antigravity CLI"
 slug: "antigravity"
-description: "Google Antigravity AI coding assistant and remote-control daemon with web terminal Ingress"
-version: "1.0.1"
+description: "Google Antigravity AI coding assistant and remote-control daemon with persistent Ingress TUI"
+version: "1.1.0"
 url: "https://github.com/mostlyrobots/agy-ha"
+image: "ghcr.io/mostlyrobots/{arch}-addon-antigravity"
 arch:
   - aarch64
   - amd64
@@ -21,6 +22,7 @@ full_access: true
 apparmor: false
 map:
   - homeassistant_config:rw
+  - addon_configs:rw
   - share:rw
   - ssl:rw
   - media:rw
@@ -28,11 +30,14 @@ map:
 environment:
   SHELL: "/bin/bash"
   TERM: "xterm-256color"
+  COLORTERM: "truecolor"
 options:
-  default_model: "Gemini 3.8 Flash (Low)"
-  gcp_project: ""
+  instance_name: "homeassistant"
   auto_start_remote_control: true
+  git_user_name: ""
+  git_user_email: ""
 schema:
-  default_model: "str?"
-  gcp_project: "str?"
+  instance_name: "str?"
   auto_start_remote_control: "bool?"
+  git_user_name: "str?"
+  git_user_email: "str?"
