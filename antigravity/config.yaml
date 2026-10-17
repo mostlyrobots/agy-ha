@@ -2,7 +2,6 @@ name: "Google Antigravity CLI"
 slug: "antigravity"
 description: "Google Antigravity AI coding assistant and remote-control daemon with web terminal Ingress"
 version: "1.0.1"
-image: "ghcr.io/mostlyrobots/{arch}-addon-antigravity"
 url: "https://github.com/mostlyrobots/agy-ha"
 arch:
   - aarch64
@@ -21,7 +20,7 @@ docker_api: true
 full_access: true
 apparmor: false
 map:
-  - config:rw
+  - homeassistant_config:rw
   - share:rw
   - ssl:rw
   - media:rw
